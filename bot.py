@@ -1,16 +1,15 @@
 import requests
 from bs4 import BeautifulSoup
-import schedule
-import time
 from telegram import Bot
+import time
 
-# ====== CONFIG ======
 BOT_TOKEN = "8337254899:AAGcUk0FN7BDDM6GUgupuDJzd55f8OKTpxE"
-CHAT_ID = 1467665974
+CHAT_ID = "1467665974"
 
 bot = Bot(token=BOT_TOKEN)
 
-# ====== FUNCTION ======
+sent_news = set()
+
 def check_news():
     url = "https://www.forexfactory.com/calendar"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -22,36 +21,40 @@ def check_news():
 
     for row in rows:
         try:
-            impact = row.find("td", class_="calendar__impact").text.strip()
+            impact = row.find("td", class_="calendar__impact").get("title")
             currency = row.find("td", class_="calendar__currency").text.strip()
             event = row.find("td", class_="calendar__event").text.strip()
             time_news = row.find("td", class_="calendar__time").text.strip()
 
-            if "High" in impact and currency == "USD":
-                message = f"""
-🚨 HIGH IMPACT NEWS ALERT 🚨
+            unique_id = event + time_news
 
-Currency: {currency}
+            # FILTER: Only high impact USD news
+            if impact == "High Impact Expected" and currency == "USD":
+
+                if unique_id not in sent_news:
+                    sent_news.add(unique_id)
+
+                    message = f"""
+🚨 HIGH IMPACT USD NEWS 🚨
+
 Event: {event}
 Time: {time_news}
 
-⚠️ Prepare for volatility in:
-XAUUSD / BTCUSD / ETHUSD
+🔥 Affects:
+XAUUSD (Gold)
+BTCUSD / ETHUSD
 
-Plan:
+PLAN:
 Wait for liquidity sweep
-Trade after displacement (SMC)
+Enter after displacement (SMC)
 """
-                bot.send_message(chat_id=CHAT_ID, text=message)
+
+                    bot.send_message(chat_id=CHAT_ID, text=message)
 
         except:
             continue
 
-# ====== SCHEDULER ======
-schedule.every(30).seconds.do(check_news)
-
-print("Bot Running...")
 
 while True:
-    schedule.run_pending()
-    time.sleep(1)
+    check_news()
+    time.sleep(30)  # every 30 seconds
